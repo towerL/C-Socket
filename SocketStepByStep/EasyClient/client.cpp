@@ -15,6 +15,11 @@
 
 #define SOCKET_ERROR -1
 
+struct DataPackage { //字节序顺序和对齐要保持一致
+    int age;
+    char name[32];
+};
+
 int main() {
     //1. 建立一个socket
     int _sock = socket(AF_INET, SOCK_STREAM, 0); //与服务器端不同，第三个参数无需声明使用TCP连接
@@ -52,7 +57,8 @@ int main() {
         char recvBuf[256] = {};
         int nlen = recv(_sock, recvBuf, 256, 0); //返回接受数据的长度
         if (nlen > 0) {
-            printf("message: %s\n", recvBuf);
+            DataPackage* dp = (DataPackage*)recvBuf;
+            printf("age: %d, name: %s\n", dp->age, dp->name);
         }
     }
     

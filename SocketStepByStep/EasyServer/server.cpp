@@ -6,6 +6,11 @@
 #include <string.h>
 #include <unistd.h>
 
+struct DataPackage { //字节序顺序和对齐要保持一致
+    int age;
+    char name[32];
+};
+
 int main() {
     //1. 建立一个socket(传入socket族，socket类型, 协议类型)
     int _sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -55,14 +60,10 @@ int main() {
         }
         printf("receive message:%s\n", _recvBuf); //提示收到命令
         //6. 处理请求
-        if (0 == strcmp(_recvBuf, "getName")) {
+        if (0 == strcmp(_recvBuf, "getInfo")) {
             //7. 向客户端发送数据send
-            char msgBuf[] = "LIU";
-            send(_cSock, msgBuf, sizeof(msgBuf) + 1, 0); //长度+1，将结尾符一并发送过去
-        } else if (0 == strcmp(_recvBuf, "getAge")){
-            //7. 向客户端发送数据send
-            char msgBuf[] = "18";
-            send(_cSock, msgBuf, sizeof(msgBuf) + 1, 0); //长度+1，将结尾符一并发送过去
+            DataPackage dp = {80, "zhang"};
+            send(_cSock, (const char*)&dp, sizeof(DataPackage), 0); //长度+1，将结尾符一并发送过去
         } else {
             //7. 向客户端发送数据send
             char msgBuf[] = "???";
