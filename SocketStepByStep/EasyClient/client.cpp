@@ -15,9 +15,36 @@
 
 #define SOCKET_ERROR -1
 
-struct DataPackage { //字节序顺序和对齐要保持一致
-    int age;
-    char name[32];
+//三个命令：登入、登出和错误信息
+enum CMD {
+    CMD_LOGIN,
+    CMD_LOGOUT,
+    CMD_ERROR
+};
+
+//包头
+struct DataHeader {
+    short dataLength; //数据长度
+    short cmd; //命令
+};
+
+//包体 DataPackage
+struct Login {
+    char UserName[32];
+    char PassWord[32];
+};
+
+struct LoginResult {
+    int result;
+};
+
+struct LogOut {
+    char UserName[32];
+    
+};
+
+struct LogoutResult {
+    int result;
 };
 
 int main() {
@@ -49,16 +76,34 @@ int main() {
         if (0 == strcmp(cmdBuf, "exit")) {
             printf("receive quit message!");
             break;
-        } else {
+        } else if (0 == strcmp(cmdBuf, "login")){
             //5. 向服务器端发送请求
-            send(_sock, cmdBuf, strlen(cmdBuf) + 1, 0);
-        }
-        //6. 接受服务器信息recv
-        char recvBuf[256] = {};
-        int nlen = recv(_sock, recvBuf, 256, 0); //返回接受数据的长度
-        if (nlen > 0) {
-            DataPackage* dp = (DataPackage*)recvBuf;
-            printf("age: %d, name: %s\n", dp->age, dp->name);
+            Login login = {"tower", "1234"};
+            DataHeader dh= {sizeof(login), CMD_LOGIN};
+            send(_sock, (const char*)&dh, sizeof(DataHeader), 0);
+            send(_sock, (const char*)&login, sizeof(Login), 0);
+            //6. 接收服务器返回数据
+            DataHeader retHeader = {};
+            LoginResult loginRet = {};
+            recv(_sock, (char*)&retHeader, sizeof(DataHeader), 0);
+            recv(_sock, (char*)&loginRet, sizeof(LoginResult), 0);
+            printf("LoginResult: %d\n", loginRet.result);
+            
+        } else if (0 == strcmp(cmdBuf, "logout")) {
+            //5. 向服务器端发送请求
+            LogOut logout = {"tower"};
+            DataHeader dh = {sizeof(logout), CMD_LOGOUT};
+            send(_sock, (const char*)&dh, sizeof(DataHeader), 0);
+            send(_sock, (const char*)&logout, sizeof(LogOut), 0);
+            //6. 接收服务器返回数据
+            DataHeader retHeader = {};
+            LogoutResult logoutRet = {};
+            recv(_sock, (char*)&retHeader, sizeof(DataHeader), 0);
+            recv(_sock, (char*)&logoutRet, sizeof(LogoutResult), 0);
+            printf("LogoutResult: %d\n", logoutRet.result);
+            
+        } else {
+            printf("unsupported command!");
         }
     }
     

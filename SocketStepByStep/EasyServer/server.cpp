@@ -6,16 +6,43 @@
 #include <string.h>
 #include <unistd.h>
 
-struct DataPackage { //字节序顺序和对齐要保持一致
-    int age;
-    char name[32];
+//三个命令：登入、登出和错误信息
+enum CMD {
+    CMD_LOGIN,
+    CMD_LOGOUT,
+    CMD_ERROR
+};
+
+//包头
+struct DataHeader {
+    short dataLength; //数据长度
+    short cmd; //命令
+};
+
+//包体 DataPackage
+struct Login {
+    char UserName[32];
+    char PassWord[32];
+};
+
+struct LoginResult {
+    int result;
+};
+
+struct LogOut {
+    char UserName[32];
+    
+};
+
+struct LogoutResult {
+    int result;
 };
 
 int main() {
     //1. 建立一个socket(传入socket族，socket类型, 协议类型)
     int _sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (_sock == -1) {
-        perror("scoket error!");
+        perror("socket error!");
         return 1;
     }
     
@@ -50,25 +77,45 @@ int main() {
     }
     
     //循环接收客户端数据
-    char _recvBuf[128] = {};
     while (true) {
+        DataHeader header = {}; //定义消息头结构体
         //5. 接收客户端的请求数据
-        int nLen = recv(_cSock, _recvBuf, 128, 0);
+        int nLen = recv(_cSock, (char*)&header, sizeof(header), 0);
         if (nLen <= 0) {
             printf("client has quit!\n");
             break;
         }
-        printf("receive message:%s\n", _recvBuf); //提示收到命令
+        printf("receive message:%d, data length:%d\n", header.cmd, header.dataLength); //提示收到命令
         //6. 处理请求
-        if (0 == strcmp(_recvBuf, "getInfo")) {
-            //7. 向客户端发送数据send
-            DataPackage dp = {80, "zhang"};
-            send(_cSock, (const char*)&dp, sizeof(DataPackage), 0); //长度+1，将结尾符一并发送过去
-        } else {
-            //7. 向客户端发送数据send
-            char msgBuf[] = "???";
-            send(_cSock, msgBuf, sizeof(msgBuf) + 1, 0); //长度+1，将结尾符一并发送过去
+        switch (header.cmd) {
+            case CMD_LOGIN:
+            {
+                Login login = {};
+                recv(_cSock, (char*)&login, sizeof(Login), 0); //接收客户端的登陆信息（用户名+密码）
+                //假设用户输入正确（这里忽略用户名和密码是否正确的验证过程）
+                LoginResult inret = {0};
+                //7. 向客户端发送数据send
+                send(_cSock, (char*)&header, sizeof(DataHeader), 0); //向客户端发送消息头
+                send(_cSock, (char*)&inret, sizeof(LoginResult), 0); //向客户端发送登陆结果
+            }
+            break;
+            case CMD_LOGOUT:
+            {
+                LogOut logout = {};
+                recv(_cSock, (char*)&logout, sizeof(LogOut), 0);
+                LogoutResult outret = {1};
+                //7. 向客户端发送数据send
+                send(_cSock, (char*)&header, sizeof(DataHeader), 0);
+                send(_cSock, (char*)&outret, sizeof(LogoutResult), 0);
+            }
+            break;
+            default:
+                header.cmd = CMD_ERROR;
+                header.dataLength = 0;
+                send(_cSock, (char*)&header, sizeof(DataHeader), 0);
+            break;
         }
+        
     }
     
     //8. 关闭套接字close socket
