@@ -9,7 +9,9 @@
 //三个命令：登入、登出和错误信息
 enum CMD {
     CMD_LOGIN,
+    CMD_LOGIN_RESULT,
     CMD_LOGOUT,
+    CMD_LOGOUT_RESULT,
     CMD_ERROR
 };
 
@@ -20,21 +22,43 @@ struct DataHeader {
 };
 
 //包体 DataPackage
-struct Login {
+struct Login : public DataHeader
+{
+    Login() {
+        dataLength = sizeof(Login);
+        cmd = CMD_LOGIN;
+    }
     char UserName[32];
     char PassWord[32];
 };
 
-struct LoginResult {
+struct LoginResult : public DataHeader
+{
+    LoginResult() {
+        dataLength = sizeof(LoginResult);
+        cmd = CMD_LOGIN;
+        result = 0;
+    }
     int result;
 };
 
-struct LogOut {
+struct LogOut : public DataHeader
+{
+    LogOut() {
+        dataLength = sizeof(LogOut);
+        cmd = CMD_LOGOUT;
+    }
     char UserName[32];
     
 };
 
-struct LogoutResult {
+struct LogoutResult: public DataHeader
+{
+    LogoutResult() {
+        dataLength = sizeof(LogoutResult);
+        cmd = CMD_LOGOUT;
+        result = 0;
+    }
     int result;
 };
 
@@ -85,27 +109,27 @@ int main() {
             printf("client has quit!\n");
             break;
         }
-        printf("receive message:%d, data length:%d\n", header.cmd, header.dataLength); //提示收到命令
+        
         //6. 处理请求
         switch (header.cmd) {
             case CMD_LOGIN:
             {
                 Login login = {};
-                recv(_cSock, (char*)&login, sizeof(Login), 0); //接收客户端的登陆信息（用户名+密码）
+                recv(_cSock, (char*)&login + sizeof(DataHeader), sizeof(Login) - sizeof(DataHeader), 0); //接收客户端的登陆信息，这里要注意除去headerd部分，因此要加上数据偏移，并且读取范围要减去header的大小
+                printf("receive message: CMD_LOGIN, data length:%d, username:%s, password: %s\n", login.dataLength, login.UserName, login.PassWord); //提示收到命令
                 //假设用户输入正确（这里忽略用户名和密码是否正确的验证过程）
-                LoginResult inret = {0};
+                LoginResult inret;
                 //7. 向客户端发送数据send
-                send(_cSock, (char*)&header, sizeof(DataHeader), 0); //向客户端发送消息头
                 send(_cSock, (char*)&inret, sizeof(LoginResult), 0); //向客户端发送登陆结果
             }
             break;
             case CMD_LOGOUT:
             {
                 LogOut logout = {};
-                recv(_cSock, (char*)&logout, sizeof(LogOut), 0);
-                LogoutResult outret = {1};
+                recv(_cSock, (char*)&logout + sizeof(DataHeader), sizeof(LogOut) - sizeof(DataHeader), 0);
+                printf("receive message: CMD_LOGIN, data length:%d, username:%s\n", logout.dataLength, logout.UserName);
+                LogoutResult outret;
                 //7. 向客户端发送数据send
-                send(_cSock, (char*)&header, sizeof(DataHeader), 0);
                 send(_cSock, (char*)&outret, sizeof(LogoutResult), 0);
             }
             break;
